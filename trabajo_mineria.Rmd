@@ -1,0 +1,538 @@
+---
+title: "Trabajo final mineria"
+output:
+  html_notebook: default
+  pdf_document: default
+---
+
+Limpiar el workspace, la consola y cambiar el directorio de trabajo
+```{r}
+rm(list = ls())
+graphics.off()
+cat("\014")
+options(scipen=999)
+options(digits = 3)
+# cambiar directiorio
+setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
+getwd()
+```
+Se cargan los paquetes
+```{r}
+library(pacman)
+p_load(foreign, DataExplorer, recipes, MLmetrics, caret, 
+       caTools, yardstick, funModeling, DataExplorer, VIM)
+```
+
+
+Cargar el conjunto de datos
+```{r}
+datos <- read.csv("enpove_encuesta.csv")
+```
+
+Conversion de las variables al tipo de dato apropiado
+```{r}
+str(datos)
+
+# No considerar la variable de identificaciÃ³n ID
+datos$CODIGO_PERSONA <- NULL 
+
+# Etiquetando las opciones de las variables categÃ³ricas
+datos$Dia <- as.numeric(datos$Dia)
+datos$Mes <- as.numeric(datos$Mes)
+datos$Anio <- as.numeric(datos$Anio)
+
+datos$P304 <- as.factor(datos$P304)
+datos$P311 <- as.factor(datos$P311)
+datos$P313 <- as.factor(datos$P313)
+datos$TIENE_SEGURO <- as.factor(datos$TIENE_SEGURO)
+datos$P402 <- as.factor(datos$P402)
+
+datos$P408_1 <- as.factor(datos$P408_1)
+datos$P408_2 <- as.factor(datos$P408_2)
+datos$P408_3 <- as.factor(datos$P408_3)
+datos$P408_6 <- as.factor(datos$P408_6)
+
+datos$NOMBDEPA <- as.factor(datos$NOMBDEPA)
+datos$NOMBPROV <- as.factor(datos$NOMBPROV)
+datos$NOMBDIST <- as.factor(datos$NOMBDIST)
+
+datos$P501 <- as.factor(datos$P501)
+datos$P504 <- as.factor(datos$P504)
+datos$P601 <- as.factor(datos$P601)
+datos$P609 <- as.factor(datos$P609)
+datos$P627 <- as.factor(datos$P627)
+
+#target
+###################################
+datos$P701 <- as.factor(datos$P701)
+###################################
+
+datos$P703 <- as.factor(datos$P703)
+datos$P706 <- as.factor(datos$P706)
+datos$P807 <- as.factor(datos$P807)
+
+datos$Sexo <- as.factor(datos$Sexo)
+datos$Edad <- as.numeric(datos$Edad)
+datos$Migro_de_venezuela <- as.factor(datos$Migro_de_venezuela)
+
+
+str(datos)
+
+```
+Colocar los nombres a las categorias
+```{r}
+datos$Dia <- as.numeric(datos$Dia)
+datos$Mes <- as.numeric(datos$Mes)
+datos$Anio <- as.numeric(datos$Anio)
+
+levels(datos$P304) <- c("Si", "No")
+levels(datos$P311) <- c("Si", "No")
+levels(datos$P313) <- c("Si", "No")
+levels(datos$TIENE_SEGURO) <- c("1", "2", "3", "5")
+levels(datos$P402) <- c("Si", "No")
+
+levels(datos$P408_1) <- c("Si", "No")
+levels(datos$P408_2) <- c("Si", "No")
+levels(datos$P408_3) <- c("Si", "No")
+levels(datos$P408_6) <- c("Si", "No")
+
+levels(datos$P501) <- c("Sin nivel", "Preescolar", "Educacion Básica Incompleta", "Educacion Basica Completa", "Educacion Media Diversificada Incompleta", "Educacion Media Diversificada Completa", "Tecnico Superior Incompleta", "Tecnico Superior Completa", "Superior Universitaria Incompleta", "Superior Universitaria Completa", "Maestria/ Doctorado")
+levels(datos$P504) <- c("Si", "No")
+levels(datos$P601) <- c("Si", "No")
+levels(datos$P609) <- c("Si", "No")
+levels(datos$P627) <- c("Si", "No")
+
+#target
+###################################
+levels(datos$P701) <- c("Si", "No")
+###################################
+
+levels(datos$P703) <- c("Si", "No")
+levels(datos$P706) <- c("Si", "No")
+levels(datos$P807) <- c("Si", "No")
+
+levels(datos$Sexo) <- c("Hombre", "Mujer")
+levels(datos$Migro_de_venezuela) <- c("Si", "No")
+
+str(datos)
+```
+Analisis de variables
+```{r}
+tapply(datos$Dia, datos$P701, mean)
+
+# 15.4 15.6
+
+plotar(datos, 
+       input = "Dia", 
+       target="P701", 
+       plot_type="histdens")
+
+```
+```{r}
+tapply(datos$Mes, datos$P701, mean)
+
+#   Si   No 
+#  6.74 6.75
+
+plotar(datos, 
+       input = "Mes", 
+       target="P701", 
+       plot_type="histdens")
+```
+
+```{r}
+tapply(datos$Anio, datos$P701, mean)
+
+#  Si   No 
+# 1989 1989
+
+plotar(datos, 
+       input = "Anio", 
+       target="P701", 
+       plot_type="histdens")
+```
+Las variables Dia, mes y anio no van en el modelo
+
+
+```{r}
+datos$NOMBDIST <- NULL
+
+dependiente <- "P701"
+solo_cat <- lapply(Filter(is.factor, datos), levels)
+predictores <- setdiff(names(solo_cat), dependiente)
+predictores
+
+cross_plot(datos, 
+           input     = predictores, 
+           target    = dependiente,
+           plot_type = "percentual") 
+```
+
+```{r}
+tapply(datos$Edad, datos$P701, mean)
+
+#  Si   No 
+# 29.3 28.6 
+
+plotar(datos, 
+       input = "Edad", 
+       target="P701", 
+       plot_type="histdens")
+
+```
+Variables descartadas
+
+* Anio
+* Mes
+* Dia
+* P304
+* TIENE_SEGURO
+* P408_1
+* P408_2
+* NOMBPROV
+* NOMBDIST
+* P504
+* P609
+* P703
+* Sexo
+* Migro_venezuela
+
+
+Variables seleccionadas
+
+* Numericas 
+  + **Edad** - Edad del entrevistado
+* Categoricas
+  + **P311** - DESDE QUE LLEGÓ AL PERÚ. ¿HA VIVIDO SIEMPRE EN ESTE DISTRITO?
+  + **P313** - USTED, ¿PIENSA QUEDARSE A VIVIR EN PERÚ?
+  + **P402** - ¿PADECE DE ALGUNA ENFERMEDAD O MALESTAR CRÓNICO?
+  + **P408_3** - ¿TIENE UD LIMITACIONES DE FORMA PERMANENTE, PARA: Hablar o comunicarse, aun usando lenguaje de señas u otro?
+  + **P408_6** - ¿TIENE UD LIMITACIONES DE FORMA PERMANENTE, PARA: Relacionarse con los demás, por sus pensamientos, sentimientos.
+  + **NOMBDEPA** - Departamento
+  + **P501** - Nivel de instruccion
+  + **P601** - LA SEMANA PASADA, ¿TUVO UD. ALGÚN TRABAJO? (sin contar con los quehaceres del hogar)?
+  + **P627** - EN VENEZUELA, ¿TENÍA USTED TRABAJO ANTES DE INICIAR SU VIAJE?
+  + **P706** - EN VENEZUELA, ¿USTED PARTICIPABA DE ASOCIACIONES / ESPACIOS DE REUNIÓN COMUNITARIOS?
+  + **P807** - DESDE QUE LLEGÓ AL PERÚ, ¿SABE O CONOCE DE ALGUNA PERSONA VENEZOLANA QUE HA SIDO VÍCTIMA DE MALTRATO VERBAL?
+  
+ 
+Se usaran entonces 12 variables predictores para predecir si una persona de nacionalidad
+venezolana que reside en el Peru ha sido o no discriminada
+
+Descartando variables para quedarnos solo con las seleccionadas para la prediccion
+
+```{r}
+datos$Dia <- NULL
+datos$Mes <- NULL
+datos$Anio <- NULL
+datos$P304 <- NULL
+datos$TIENE_SEGURO <- NULL
+datos$P408_1 <- NULL
+datos$P408_2 <- NULL
+datos$NOMBPROV <- NULL
+datos$NOMBDIST <- NULL
+datos$P504 <- NULL
+datos$P609 <- NULL
+datos$P703 <- NULL
+datos$Sexo <- NULL
+datos$Migro_de_venezuela <- NULL
+
+str(datos)
+
+```
+
+### Verificando si el conjunto de datos esta balanceado
+```{r}
+round(prop.table(table(datos$P701))*100,2)
+
+```
+
+Los datos siguen un ratio aproximado de 30:40 por lo tanto no es necesario hacer balanceo
+
+### Explorando datos perdidos
+```{r}
+library(DataExplorer)
+plot_missing(datos,theme= theme_bw())
+```
+### Dividir el conjunto de datos en training y testing
+Se divide la data en 80% training y 20% testing
+```{r}
+library(caret)
+set.seed(2021) 
+index    <- createDataPartition(datos$P701, 
+                                p=0.8, 
+                                list=FALSE)
+
+training <- datos[ index, ]            # 943 datos trainig             
+testing  <- datos[-index, ]            # 402 datos testing
+
+# Verificando la proporcion del target en datos particionados
+prop.table(table(datos$P701))
+prop.table(table(training$P701))
+prop.table(table(testing$P701))
+```
+### Pre procesamiento de datos
+```{r}
+library(recipes)
+set.seed(2021)
+trained_recipe <- recipe(P701 ~ .,
+                         data =  training) %>%
+  step_knnimpute(all_predictors()) %>%
+  step_nzv(all_predictors()) %>%
+  step_range(all_numeric()) %>%   # Min-Max [0,1]
+  step_dummy(all_nominal(), -all_outcomes()) %>% 
+  prep()
+
+data.train <- bake(trained_recipe, new_data = NULL)
+data.test  <- bake(trained_recipe, new_data = testing)
+
+data.train <- as.data.frame(data.train)
+data.test  <- as.data.frame(data.test)
+```
+
+Verificacion del conjunto de datos
+```{r}
+str(data.train)
+
+plot_missing(data.train,theme= theme_bw())
+plot_missing(data.test,theme= theme_bw())
+```
+
+### Etapa de entrenamiento de modelos
+
+Configuracion de cross validation con 3 repeticiones y 10 folds
+```{r}
+ctrl <- trainControl(method="repeatedcv",
+                     repeats = 3, number=10)
+```
+
+Definiendo la variable target y las variables predictoras
+```{r}
+target     <- "P701"
+predictores <- setdiff(names(data.train), target)
+predictores
+```
+
+### Modelo KNN 
+
+```{r}
+set.seed(2021)
+modelo_knn <- train(data.train[,predictores], 
+                    data.train[,target],
+                    method = "knn",
+                    trControl = ctrl, 
+                    #tuneLength = 5, # Al azar 5 valores de k
+                    tuneGrid = expand.grid(k=seq(1,91,2)),
+                    metric="Accuracy")
+
+modelo_knn
+
+modelo_knn$finalModel
+
+modelo_knn$bestTune
+
+plot(modelo_knn)
+```
+
+Evaluando la performance del modelo
+```{r}
+set.seed(2021)
+
+PROBA.KNN <- predict(modelo_knn, newdata = data.test, type="prob")
+PROBA.KNN <- PROBA.KNN[,2]
+CLASE.KNN <- predict(modelo_knn, newdata = data.test)
+
+# Matriz de confusion
+cm_knn <- caret::confusionMatrix(CLASE.KNN,
+                                 data.test$P701,
+                                 positive="Si")
+
+cm_knn$table
+
+# Area bajo la curva
+colAUC(PROBA.KNN, data.test$P701, plotROC = TRUE) -> auc_knn
+abline(0, 1,col="red")
+auc_knn
+
+# log loss
+library(MLmetrics)
+real <- as.numeric(data.test$P701)
+real <- ifelse(real==2,1,0)
+LogLoss(PROBA.KNN,real) -> logloss_knn
+logloss_knn
+
+```
+
+### Modelo Regresion logistica
+
+```{r}
+set.seed(2021)
+modelo_rl <- train(data.train[,predictores], 
+                    data.train[,target],
+                    method = "glm",
+                    family="binomial",
+                    trControl = ctrl, 
+                    tuneLength = 5,
+                    metric="Accuracy")
+
+modelo_rl
+modelo_rl$finalModel
+```
+
+Evaluando la performance del modelo
+```{r}
+set.seed(2021)
+
+PROBA.RL <- predict(modelo_rl, newdata = data.test, type="prob")
+PROBA.RL <- PROBA.RL[,2]
+CLASE.RL <- predict(modelo_rl, newdata = data.test)
+
+# Matriz de confusion
+cm_rl <- caret::confusionMatrix(CLASE.RL,
+                                 data.test$P701,
+                                 positive="Si")
+
+cm_rl$table
+
+# Area bajo la curva
+colAUC(PROBA.RL, data.test$P701, plotROC = TRUE) -> auc_rl
+abline(0, 1,col="red")
+auc_rl
+
+# log loss
+library(MLmetrics)
+real <- as.numeric(data.test$P701)
+real <- ifelse(real==2,1,0)
+LogLoss(PROBA.RL,real) -> logloss_rl
+logloss_rl
+```
+
+### Modelo naive-bayes
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+
+
+### Modelo SVM Lineal (SVC)
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+
+
+### Modelo SVM (Radial o polinomial)
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+
+
+### Red neuronal 
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+
+
+### Modelo C5
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+
+
+### Modelo CART
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+
+
+### Modelo Bagging
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+
+
+### Modelo Random Forest 
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+
+
+### Modelo AdaBoosting
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+
+
+### Modelo GBM (GRADIENT BOOSTING MACHINE)
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+
+
+### Modelo XGBoosting
+
+```{r}
+
+```
+
+```{r}
+
+```
