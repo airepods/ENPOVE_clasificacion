@@ -20,7 +20,11 @@ Se cargan los paquetes
 ```{r}
 library(pacman)
 p_load(foreign, DataExplorer, recipes, MLmetrics, caret, 
+<<<<<<< Updated upstream
        caTools, yardstick, funModeling, DataExplorer, VIM)
+=======
+       caTools, yardstick, funModeling, DataExplorer, VIM,BiocManager, boruta)
+>>>>>>> Stashed changes
 
 ```
 
@@ -559,6 +563,62 @@ logloss_svc
 ### Modelo SVM (Radial o polinomial)
 
 ```{r}
+# Modelo SVM
+set.seed(2021)
+modelo2 <- train(P701 ~ ., 
+                 data = data.train, 
+                 method = "svmRadial", 
+                 trControl = ctrl, 
+                 #tunelength = 10,
+                 tuneGrid = expand.grid(C=seq(1,2,length=10),
+                                        sigma=0.05317),
+                 metric="Accuracy")
+
+
+modelo2
+
+modelo2$bestTune
+# Los mejor hiper parametros encontrados durante el entrenamiento son
+# sigma = 0.05317 y C = 1.333
+# Estos se obtuvieron durante una segunda pasada de entrenamiento usando tuneGrid
+# y considerando como sigma al mejor sigma obtenido de la primera pasada
+
+plot(modelo2)
+
+
+PROBA.SVM <- predict(modelo2, newdata= data.test, type="prob")
+head(PROBA.SVM)
+PROBA.SVM <- PROBA.SVM[,2]
+
+CLASE.SVM <- predict(modelo2,newdata = data.test) # 0.5
+head(CLASE.SVM)
+
+# Evaluando la performance del modelo SVM ---------------------
+
+# Calcular el accuracy
+accuracy_svm <- mean(data.test$P701==CLASE.SVM);accuracy_svm
+
+# Calcular el error de mala clasificación
+error <- mean(data.test$P701!=CLASE.SVM) ; error
+
+# Matriz de Confusion usando el paquete caret
+library(caret)
+cm_svm <- caret::confusionMatrix(CLASE.SVM,
+                                 data.test$P701,
+                                 positive="Si")
+cm_svm
+
+cm_svm$table
+
+cm_svm$byClass["Sensitivity"] 
+cm_svm$byClass["Specificity"] 
+cm_svm$overall["Accuracy"]
+
+# Curva ROC usando el paquete caTools
+library(caTools)
+colAUC(PROBA.SVM,data.test$MORA60,plotROC = TRUE) -> auc_svm
+abline(0, 1,col="red")
+auc_svm
 
 ```
 
@@ -571,7 +631,7 @@ logloss_svc
 ### Red neuronal 
 
 ```{r}
-
+GGGGGGG
 ```
 
 ```{r}
@@ -583,7 +643,60 @@ logloss_svc
 ### Modelo C5
 
 ```{r}
+# Modelo Arbol C5
 
+set.seed(2021)
+modelo_C5    <- train(P701 ~ ., 
+                      data = data.train, 
+                      method = "C5.0", 
+                      trControl = ctrl, 
+                      tuneLength = 5,
+                      metric="Accuracy")
+
+modelo_C5
+
+modelo_C5$bestTune
+
+plot(modelo_C5)
+
+
+# Predicción de la clase y probabilidad 
+PROBA.C5 <- predict(modelo_C5,newdata = data.test,type="prob")
+head(PROBA.C5)
+PROBA.C5 <- PROBA.C5[,2]
+
+CLASE.C5 <- predict(modelo_C5,newdata = data.test )
+head(CLASE.C5)
+
+# Evaluando la performance del modelo C5.0 --------------------
+# Matriz de Confusion
+library(gmodels)
+CrossTable(x = data.test$P701, y = CLASE.C5,
+           prop.t=FALSE, prop.c=FALSE, prop.chisq = FALSE)
+
+addmargins(table(Real=data.test$P701,Clase_Predicha=CLASE.C5))
+prop.table(table(Real=data.test$P701,Clase_Predicha=CLASE.C5),1)
+
+# Calcular el accuracy
+accuracy_c5 <- mean(data.test$P701==CLASE.C5) ; accuracy_c5
+
+# Calcular el error de mala clasificación
+error <- mean(data.test$P701!=CLASE.C5) ; error
+
+cm_c5 <- caret::confusionMatrix(CLASE.C5,
+                                data.test$P701,
+                                positive="Si")
+
+cm_c5
+cm_c5$byClass["Sensitivity"] 
+cm_c5$byClass["Specificity"] 
+cm_c5$overall["Accuracy"]
+
+# Curva ROC usando el paquete caTools
+library(caTools)
+colAUC(PROBA.C5,data.test$P701,plotROC = TRUE) -> auc_c5
+abline(0, 1,col="red")
+auc_c5
 ```
 
 ```{r}
@@ -595,7 +708,67 @@ logloss_svc
 ### Modelo CART
 
 ```{r}
+# Modelo CART
+set.seed(2021)
+modelo_cart <- train(P701 ~ ., 
+                     data = data.train, 
+                     method = "rpart", 
+                     trControl = ctrl, 
+                     tuneLength = 20,
+                     #tuneGrid = expand.grid(cp=seq(0,0.5,0.001)),
+                     metric="Accuracy")
 
+modelo_cart
+
+#        cp  Accuracy
+#  0.002316    0.7188
+
+modelo_cart$bestTune
+plot(modelo_cart)
+
+
+modelo_cart$finalModel
+
+
+PROBA.CART <- predict(modelo_cart,
+                      newdata = data.test, 
+                      type="prob")
+PROBA.CART <- PROBA.CART[,2]
+head(PROBA.CART)
+
+CLASE.CART <- predict(modelo_cart,newdata = data.test )
+head(CLASE.CART)
+
+
+# Evaluando la performance del modelo CART --------------------
+# Matriz de Confusion
+library(gmodels)
+CrossTable(x = data.test$P701, y = CLASE.CART,
+           prop.t=FALSE, prop.c=FALSE, prop.chisq = FALSE)
+
+addmargins(table(Real=data.test$P701,Clase_Predicha=CLASE.CART))
+prop.table(table(Real=data.test$P701,Clase_Predicha=CLASE.CART),1)
+
+# Calcular el accuracy
+accuracy_cart <- mean(data.test$P701==CLASE.CART) ; accuracy_cart
+
+# Calcular el error de mala clasificación
+error <- mean(data.test$P701!=CLASE.CART) ; error
+
+cm_cart <- caret::confusionMatrix(CLASE.CART,
+                                  data.test$P701,
+                                  positive="Si")
+
+cm_cart
+cm_cart$byClass["Sensitivity"] 
+cm_cart$byClass["Specificity"] 
+cm_cart$overall["Accuracy"]
+
+# Curva ROC usando el paquete caTools
+library(caTools)
+colAUC(PROBA.CART,data.test$P701,plotROC = TRUE) -> auc_cart
+abline(0, 1,col="red")
+auc_cart
 ```
 
 ```{r}
@@ -643,7 +816,86 @@ logloss_svc
 ### Modelo GBM (GRADIENT BOOSTING MACHINE)
 
 ```{r}
+# GBM con CARET -----------------------------------------------
+# Relación de parámetros a ajustar de un modelo
+modelLookup("gbm")
 
+# Aplicando el modelo con Validación Cruzada Repetida 
+ctrl <- trainControl(method="repeatedcv",
+                     repeats = 3, number=10)
+
+set.seed(123)
+modelo_gbm <- train(P701 ~ ., data = data.train, 
+                    method = "gbm", 
+                    tuneLength=2,
+                    #tuneGrid = expand.grid(n.trees=c(50,100,150),
+                    #                       interaction.depth=c(1,2,3),
+                    #                       shrinkage=0.1,
+                    #                       n.minobsinnode=10),
+                    trControl=ctrl, metric="Accuracy")
+
+modelo_gbm
+
+modelo_gbm$bestTune
+
+plot(modelo_gbm)
+
+ggplot(modelo_gbm, highlight = T) +
+  labs(title = "Evolución del accuracy con GBM") +
+  guides(color = guide_legend(title = "Max Tree Depth"),
+         shape = guide_legend(title = "Max Tree Depth")) +
+  theme_bw() +
+  theme(legend.position = "bottom")
+
+varImp(modelo_gbm)
+
+plot(varImp(modelo_gbm))
+
+PROBA.GBM <- predict(modelo_gbm,newdata = data.test, type="prob")
+PROBA.GBM <- PROBA.GBM[,2]
+head(PROBA.GBM)
+
+CLASE.GBM <- predict(modelo_gbm,newdata = data.test )
+head(CLASE.GBM)
+
+head(cbind(data.test,PROBA.GBM,CLASE.GBM))
+
+# Evaluando la performance del modelo GBM ---------------------
+# Matriz de Confusión
+library(gmodels)
+CrossTable(x = data.test$P701, y = CLASE.GBM,
+           prop.t=FALSE, prop.c=FALSE, prop.chisq = FALSE)
+
+addmargins(table(Real=data.test$P701,Clase_Predicha=CLASE.GBM))
+prop.table(table(Real=data.test$P701,Clase_Predicha=CLASE.GBM),1)
+
+# Calcular el accuracy
+accuracy_gbm <- mean(data.test$P701==CLASE.GBM) ; accuracy_gbm
+
+# Calcular el error de mala clasificación
+error <- mean(data.test$P701!=CLASE.GBM) ; error
+
+cm_gbm <- caret::confusionMatrix(CLASE.GBM,
+                                 data.test$P701,
+                                 positive="Si")
+
+cm_gbm
+cm_gbm$byClass["Sensitivity"] 
+cm_gbm$byClass["Specificity"] 
+cm_gbm$overall["Accuracy"]
+
+# Curva ROC usando el paquete caTools
+library(caTools)
+colAUC(PROBA.GBM,data.test$P701,plotROC = TRUE) -> auc_gbm
+abline(0, 1,col="red")
+auc_gbm
+
+# Log-Loss
+library(MLmetrics)
+real <- as.numeric(data.test$P701)
+real <- ifelse(real==2,1,0)
+LogLoss(PROBA.GBM,real) -> logloss_gbm
+logloss_gbm
 ```
 
 ```{r}
@@ -655,7 +907,84 @@ logloss_svc
 ### Modelo XGBoosting
 
 ```{r}
+# XGBOOSTING con CARET ----------------------------------------
+# Relación de parámetros a ajustar de un modelo
+modelLookup("xgbTree")
 
+# Aplicando el modelo con Validación Cruzada Repetida 
+ctrl <- trainControl(method="repeatedcv",
+                     repeats = 3, number=10)
+
+set.seed(123)
+modelo_xg <- train(P701 ~ ., 
+                   data = data.train, 
+                   method = "xgbTree", 
+                   tuneLength=2,
+                   trControl=ctrl, 
+                   metric="Accuracy")
+
+modelo_xg
+
+modelo_xg$bestTune
+
+modelo_xg$resample
+
+plot(modelo_xg)
+
+varImp(modelo_xg)
+
+plot(varImp(modelo_xg))
+
+library(xgboost)
+library(DiagrammeR)
+xgb.plot.tree(model = modelo_xg$finalModel, trees = 1)
+xgb.plot.tree(model = modelo_xg$finalModel, trees = 5)
+
+PROBA.XG <- predict(modelo_xg,newdata = data.test, type="prob")
+PROBA.XG <- PROBA.XG[,2]
+head(PROBA.XG)
+
+CLASE.XG <- predict(modelo_xg,newdata = data.test )
+head(CLASE.XG)
+
+head(cbind(data.test,PROBA.XG,CLASE.XG))
+
+# Evaluando la performance del modelo XGBoosting --------------
+# Matriz de Confusión
+library(gmodels)
+CrossTable(x = data.test$P701, y = CLASE.XG,
+           prop.t=FALSE, prop.c=FALSE, prop.chisq = FALSE)
+
+addmargins(table(Real=data.test$P701,Clase_Predicha=CLASE.XG))
+prop.table(table(Real=data.test$P701,Clase_Predicha=CLASE.XG),1)
+
+# Calcular el accuracy
+accuracy_xg <- mean(data.test$P701==CLASE.XG) ; accuracy_xg
+
+# Calcular el error de mala clasificación
+error <- mean(data.test$P701!=CLASE.XG) ; error
+
+cm_xg <- caret::confusionMatrix(CLASE.XG,
+                                data.test$P701,
+                                positive="Si")
+
+cm_xg
+cm_xg$byClass["Sensitivity"] 
+cm_xg$byClass["Specificity"] 
+cm_xg$overall["Accuracy"]
+
+# Curva ROC usando el paquete caTools
+library(caTools)
+colAUC(PROBA.XG,data.test$P701,plotROC = TRUE) -> auc_xg
+abline(0, 1,col="red")
+auc_xg
+
+# Log-Loss
+library(MLmetrics)
+real <- as.numeric(data.test$P701)
+real <- ifelse(real==2,1,0)
+LogLoss(PROBA.XG,real) -> logloss_xg
+logloss_xg
 ```
 
 ```{r}
