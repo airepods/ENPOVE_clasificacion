@@ -20,7 +20,7 @@ Se cargan los paquetes
 ```{r}
 library(pacman)
 p_load(foreign, DataExplorer, recipes, MLmetrics, caret, 
-       caTools, yardstick, funModeling, DataExplorer, VIM)
+       caTools, yardstick, funModeling, DataExplorer, VIM, boruta)
 ```
 
 
@@ -281,6 +281,7 @@ trained_recipe <- recipe(P701 ~ .,
   step_nzv(all_predictors()) %>%
   step_range(all_numeric()) %>%   # Min-Max [0,1]
   step_dummy(all_nominal(), -all_outcomes()) %>% 
+  step_other(all_nominal(), -all_outcomes(), threshold = 0.07, other = "other") %>%
   prep()
 
 data.train <- bake(trained_recipe, new_data = NULL)
@@ -289,6 +290,40 @@ data.test  <- bake(trained_recipe, new_data = testing)
 data.train <- as.data.frame(data.train)
 data.test  <- as.data.frame(data.test)
 ```
+
+
+Seleccionando las variables mas importantes con el algoritmo BORUTO
+```{r}
+library(Boruta)
+set.seed(2021)
+
+boruta.data <- Boruta(P701 ~ ., data = data.train, doTrace = 2)
+
+print(boruta.data)
+
+plot(boruta.data,cex.axis=0.5)
+
+plotImpHistory(boruta.data,lty=1)
+
+final.boruta.bank <- TentativeRoughFix(boruta.data)
+print(final.boruta.bank)
+
+getSelectedAttributes(final.boruta.bank, withTentative = F)
+
+boruta.df <- attStats(final.boruta.bank)
+print(boruta.df)
+boruta.df[order(-boruta.df$meanImp),]
+```
+
+Luego de aplicar el algoritmo, el resultado obtenido nos dice que solo 11 variables con consideradas importantes, por lo que las restantes
+se eliminar de el conjunto de datos de training y tambien de testing al ya no considerarse relevantes para la prediccion
+```{r}
+
+```
+
+
+
+
 
 Verificacion del conjunto de datos
 ```{r}
