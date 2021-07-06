@@ -1,8 +1,10 @@
 ---
 title: "Trabajo final mineria"
 output:
-  html_notebook: default
+  html_document:
+    df_print: paged
   pdf_document: default
+  html_notebook: default
 ---
 
 Limpiar el workspace, la consola y cambiar el directorio de trabajo
@@ -769,7 +771,68 @@ auc_cart
 ### Modelo Bagging
 
 ```{r}
+set.seed(2021)
+modelo_bag <- train( ~ ., 
+                    data = data.train, 
+                    method = "treebag",
+                    trControl = ctrl, 
+                    #tuneLength = 5, 
+                    metric="Accuracy")
 
+modelo_bag
+
+# treebag no tiene hiperparÃ¡metros para hacer tunning
+plot(modelo_bag)
+
+varImp(modelo_bag)
+
+plot(varImp(modelo_bag))
+
+PROBA.BAG <- predict(modelo_bag,newdata = data.test, type="prob")
+PROBA.BAG <- PROBA.BAG[,2]  # Columna 1 = Probabilidad Actual(0)  
+head(PROBA.BAG)             # Columna 2 = Probabilidad   Fuga(1)  
+
+CLASE.BAG <- predict(modelo_bag,newdata = data.test )
+head(CLASE.BAG)
+
+head(cbind(data.test,PROBA.BAG,CLASE.BAG))
+
+# Evaluando la performance del modelo Bagging -----------------
+# Matriz de ConfusiÃ³n
+library(gmodels)
+CrossTable(x = data.test$CHURN, y = CLASE.BAG,
+           prop.t=FALSE, prop.c=FALSE, prop.chisq = FALSE)
+
+addmargins(table(Real=data.test$CHURN,Clase_Predicha=CLASE.BAG))
+prop.table(table(Real=data.test$CHURN,Clase_Predicha=CLASE.BAG),1)
+
+# Calcular el accuracy
+accuracy_bag <- mean(data.test$CHURN==CLASE.BAG) ; accuracy_bag
+
+# Calcular el error de mala clasificaciÃ³n
+error <- mean(data.test$CHURN!=CLASE.BAG) ; error
+
+cm_bag <- caret::confusionMatrix(CLASE.BAG,
+                                 data.test$CHURN,
+                                 positive="Fuga")
+
+cm_bag
+cm_bag$byClass["Sensitivity"] 
+cm_bag$byClass["Specificity"] 
+cm_bag$overall["Accuracy"]
+
+# Curva ROC usando el paquete caTools
+library(caTools)
+colAUC(PROBA.BAG,data.test$CHURN,plotROC = TRUE) -> auc_bag
+abline(0, 1,col="red")
+auc_bag
+
+# Log-Loss
+library(MLmetrics)
+real <- as.numeric(data.test$CHURN)
+real <- ifelse(real==2,1,0)
+LogLoss(PROBA.BAG,real) -> logloss_bag
+logloss_bag
 ```
 
 ```{r}
