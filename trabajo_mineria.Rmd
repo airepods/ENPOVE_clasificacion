@@ -21,6 +21,7 @@ Se cargan los paquetes
 library(pacman)
 p_load(foreign, DataExplorer, recipes, MLmetrics, caret, 
        caTools, yardstick, funModeling, DataExplorer, VIM, boruta)
+
 ```
 
 
@@ -317,7 +318,33 @@ boruta.df[order(-boruta.df$meanImp),]
 
 Luego de aplicar el algoritmo, el resultado obtenido nos dice que solo 11 variables con consideradas importantes, por lo que las restantes
 se eliminar de el conjunto de datos de training y tambien de testing al ya no considerarse relevantes para la prediccion
+
 ```{r}
+data.train$P501_Educacion.Media.Diversificada.Incompleta <- NULL
+data.train$P501_Preescolar <- NULL
+data.train$NOMBDEPA_LA.LIBERTAD <- NULL
+data.train$P501_Superior.Universitaria.Completa <- NULL
+data.train$NOMBDEPA_TUMBES <- NULL
+data.train$NOMBDEPA_CALLAO <- NULL
+data.train$NOMBDEPA_LIMA <- NULL
+data.train$P501_Superior.Universitaria.Incompleta <- NULL
+data.train$P501_Tecnico.Superior.Incompleta <- NULL
+data.train$P501_Maestria..Doctorado <- NULL
+data.train$P501_Tecnico.Superior.Completa <- NULL
+data.train$P501_Educacion.Basica.Completa <- NULL
+
+data.test$P501_Educacion.Media.Diversificada.Incompleta <- NULL
+data.test$P501_Preescolar <- NULL
+data.test$NOMBDEPA_LA.LIBERTAD <- NULL
+data.test$P501_Superior.Universitaria.Completa <- NULL
+data.test$NOMBDEPA_TUMBES <- NULL
+data.test$NOMBDEPA_CALLAO <- NULL
+data.test$NOMBDEPA_LIMA <- NULL
+data.test$P501_Superior.Universitaria.Incompleta <- NULL
+data.test$P501_Tecnico.Superior.Incompleta <- NULL
+data.test$P501_Maestria..Doctorado <- NULL
+data.test$P501_Tecnico.Superior.Completa <- NULL
+data.test$P501_Educacion.Basica.Completa <- NULL
 
 ```
 
