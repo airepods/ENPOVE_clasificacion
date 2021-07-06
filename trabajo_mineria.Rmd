@@ -631,7 +631,7 @@ auc_svm
 ### Red neuronal 
 
 ```{r}
-
+GGGGGGG
 ```
 
 ```{r}
