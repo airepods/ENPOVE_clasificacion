@@ -609,6 +609,13 @@ colAUC(PROBA.SVM,data.test$P701,plotROC = TRUE) -> auc_svm
 abline(0, 1,col="red")
 auc_svm
 
+# log loss
+library(MLmetrics)
+real <- as.numeric(data.test$P701)
+real <- ifelse(real==2,1,0)
+LogLoss(PROBA.SVM,real) -> logloss_svm
+logloss_svm
+
 ```
 
 ```{r}
@@ -620,7 +627,87 @@ auc_svm
 ### Red neuronal 
 
 ```{r}
+# 3.3 Red Neuronal con Validación Cruzada Repetida ------------
+# Relación de parámetros a ajustar de un modelo
+modelLookup(model='nnet')
 
+set.seed(123)
+modelo3 <- train(P701 ~ ., 
+                 data = data.train, 
+                 method = "nnet",
+                 trControl = ctrl, 
+                 tuneLength = 5, 
+                 #tuneGrid = expand.grid(size=seq(1,3,1),
+                 #              decay=seq(0,0.05,0.005)),
+                 metric="Accuracy")
+
+
+# X1  X2  Y
+# 20  3  Fuga
+# 20  3  No Fuga
+
+modelo3
+
+modelo3$bestTune
+
+plot(modelo3)
+
+plotnet(modelo3$finalModel)
+
+# Importancia de las variables
+olden(modelo3)
+garson(modelo3)
+
+varImp(modelo3)
+plot(varImp(modelo3))
+
+PROBA.RNA <- predict(modelo3,newdata = data.test, type="prob")
+PROBA.RNA <- PROBA.RNA[,2]
+head(PROBA.RNA)
+
+CLASE.RNA <- predict(modelo3,newdata = data.test ) # unbral = 0.5
+head(CLASE.RNA)
+
+# Evaluando la performance de la Red Neuronal -----------------
+# Matriz de Confusión
+tabla3  <- table(Predicho=CLASE.RNA,Real= data.test$P701)
+addmargins(tabla3)
+
+library(yardstick)
+autoplot(conf_mat(tabla3),type="heatmap")  
+summary(conf_mat(tabla3), event_level = "second") 
+
+# Calcular el accuracy
+accuracy_rna <- mean(data.test$P701==CLASE.RNA) ; accuracy_rna
+
+# Calcular el error de mala clasificación
+error <- mean(data.test$P701!=CLASE.RNA) ; error
+
+# Matriz de Confusión usando el paquete caret
+library(caret)
+cm_rna <- caret::confusionMatrix(CLASE.RNA,
+                                 data.test$P701,
+                                 positive="Si")
+cm_rna
+
+cm_rna$table
+
+cm_rna$byClass["Sensitivity"] 
+cm_rna$byClass["Specificity"] 
+cm_rna$overall["Accuracy"]
+
+# Curva ROC usando el paquete caTools
+library(caTools)
+colAUC(PROBA.RNA,data.test$P701,plotROC = TRUE) -> auc_rna
+abline(0, 1,col="red",lty=2)
+auc_rna
+
+# Log-Loss
+library(MLmetrics)
+real <- as.numeric(data.test$P701)
+real <- ifelse(real==2,1,0)
+LogLoss(PROBA.RNA,real) -> logloss_rna
+logloss_rna
 ```
 
 ```{r}
@@ -686,6 +773,13 @@ library(caTools)
 colAUC(PROBA.C5,data.test$P701,plotROC = TRUE) -> auc_c5
 abline(0, 1,col="red")
 auc_c5
+
+# Log-Loss
+library(MLmetrics)
+real <- as.numeric(data.test$P701)
+real <- ifelse(real==2,1,0)
+LogLoss(PROBA.C5,real) -> logloss_c5
+logloss_c5
 ```
 
 ```{r}
@@ -758,6 +852,13 @@ library(caTools)
 colAUC(PROBA.CART,data.test$P701,plotROC = TRUE) -> auc_cart
 abline(0, 1,col="red")
 auc_cart
+
+# Log-Loss
+library(MLmetrics)
+real <- as.numeric(data.test$P701)
+real <- ifelse(real==2,1,0)
+LogLoss(PROBA.CART,real) -> logloss_cart
+logloss_cart
 ```
 
 ```{r}
