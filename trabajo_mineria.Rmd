@@ -272,6 +272,7 @@ prop.table(table(datos$P701))
 prop.table(table(training$P701))
 prop.table(table(testing$P701))
 ```
+
 ### Pre procesamiento de datos
 ```{r}
 library(recipes)
@@ -364,7 +365,7 @@ plot_missing(data.test,theme= theme_bw())
 Configuracion de cross validation con 3 repeticiones y 10 folds
 ```{r}
 ctrl <- trainControl(method="repeatedcv",
-                     repeats = 3, number=10, classProbs =  TRUE)
+                     repeats = 3, number=10, savePredictions = 'final', classProbs =  TRUE)
 ```
 
 Definiendo la variable target y las variables predictoras
@@ -402,6 +403,10 @@ set.seed(2021)
 PROBA.KNN <- predict(modelo_knn, newdata = data.test, type="prob")
 PROBA.KNN <- PROBA.KNN[,2]
 CLASE.KNN <- predict(modelo_knn, newdata = data.test)
+
+# Calcular el accuracy
+accuracy_knn <- mean(data.test$P701==CLASE.KNN);
+accuracy_knn
 
 # Matriz de confusion
 cm_knn <- caret::confusionMatrix(CLASE.KNN,
@@ -448,6 +453,10 @@ PROBA.RL <- predict(modelo_rl, newdata = data.test, type="prob")
 PROBA.RL <- PROBA.RL[,2]
 CLASE.RL <- predict(modelo_rl, newdata = data.test)
 
+# Calcular el accuracy
+accuracy_rl <- mean(data.test$P701==CLASE.RL);
+accuracy_rl
+
 # Matriz de confusion
 cm_rl <- caret::confusionMatrix(CLASE.RL,
                                  data.test$P701,
@@ -489,6 +498,10 @@ set.seed(2021)
 PROBA.NB <- predict(modelo_nb, newdata = data.test, type="prob")
 PROBA.NB <- PROBA.NB[,2]
 CLASE.NB <- predict(modelo_nb, newdata = data.test)
+
+# Calcular el accuracy
+accuracy_nb <- mean(data.test$P701==CLASE.NB);
+accuracy_nb
 
 # Matriz de confusion
 cm_nb <- caret::confusionMatrix(CLASE.NB,
@@ -535,6 +548,11 @@ PROBA.SVC <- predict(modelo_svc, newdata= data.test, type="prob")
 PROBA.SVC <- PROBA.SVC[,2]
 CLASE.SVC <- predict(modelo_svc, newdata = data.test)
 
+
+# Calcular el accuracy
+accuracy_svc <- mean(data.test$P701==CLASE.SVC);
+accuracy_svc
+
 # Matriz de confusion
 cm_svc <- caret::confusionMatrix(CLASE.SVC,
                                  data.test$P701,
@@ -575,19 +593,18 @@ modelo_svm <- train(P701 ~ .,
 modelo_svm
 
 modelo_svm$bestTune
-# Los mejor hiper parametros encontrados durante el entrenamiento son
-# sigma = 0.05317 y C = 1.333
-# Estos se obtuvieron durante una segunda pasada de entrenamiento usando tuneGrid
-# y considerando como sigma al mejor sigma obtenido de la primera pasada
 
 plot(modelo_svm)
 
 
 PROBA.SVM <- predict(modelo_svm, newdata= data.test, type="prob")
 PROBA.SVM <- PROBA.SVM[,2]
-
 CLASE.SVM <- predict(modelo_svm,newdata = data.test) # 0.5
-head(CLASE.SVM)
+
+
+# Calcular el accuracy
+accuracy_svm <- mean(data.test$P701==CLASE.SVM);
+accuracy_svm
 
 # Evaluando la performance del modelo SVM ---------------------
 
@@ -609,6 +626,12 @@ colAUC(PROBA.SVM,data.test$P701,plotROC = TRUE) -> auc_svm
 abline(0, 1,col="red")
 auc_svm
 
+# log loss
+library(MLmetrics)
+real <- as.numeric(data.test$P701)
+real <- ifelse(real==2,1,0)
+LogLoss(PROBA.SVM,real) -> logloss_svm
+
 ```
 
 ```{r}
@@ -621,12 +644,50 @@ auc_svm
 
 ```{r}
 
+set.seed(2021)
+modelo_rna <- train(P701 ~ ., 
+                 data = data.train, 
+                 method = "nnet",
+                 trControl = ctrl, 
+                 tuneLength = 5, 
+                 #tuneGrid = expand.grid(size=seq(1,3,1),
+                 #              decay=seq(0,0.05,0.005)),
+                 metric="Accuracy")
+
+
+modelo_rna
+modelo_rna$bestTune
+
+plot(modelo_rna)
+plotnet(modelo_rna$finalModel)
+
+PROBA.RNA <- predict(modelo_rna, newdata = data.test, type="prob")
+PROBA.RNA <- PROBA.RNA[,2]
+CLASE.RNA <- predict(modelo_rna, newdata = data.test )
+
+# Calcular el accuracy
+accuracy_rna <- mean(data.test$P701==CLASE.RNA);
+accuracy_rna
+
+
+library(caret)
+cm_rna <- caret::confusionMatrix(CLASE.RNA,
+                                 data.test$P701,
+                                 positive="Si")
+cm_rna
+cm_rna$table
+
+# Curva ROC usando el paquete caTools
+library(caTools)
+colAUC(PROBA.RNA, data.test$P701, plotROC = TRUE) -> auc_rna
+abline(0, 1,col="red",lty=2)
+
+# Log-Loss
+library(MLmetrics)
+real <- as.numeric(data.test$P701)
+real <- ifelse(real==2,1,0)
+LogLoss(PROBA.RNA,real) -> logloss_rna
 ```
-
-```{r}
-
-```
-
 
 
 ### Modelo C5
@@ -650,42 +711,31 @@ plot(modelo_C5)
 
 
 # Predicción de la clase y probabilidad 
-PROBA.C5 <- predict(modelo_C5,newdata = data.test,type="prob")
-head(PROBA.C5)
+PROBA.C5 <- predict(modelo_C5, newdata = data.test, type="prob")
 PROBA.C5 <- PROBA.C5[,2]
+CLASE.C5 <- predict(modelo_C5, newdata = data.test)
 
-CLASE.C5 <- predict(modelo_C5,newdata = data.test )
-head(CLASE.C5)
-
-# Evaluando la performance del modelo C5.0 --------------------
-# Matriz de Confusion
-library(gmodels)
-CrossTable(x = data.test$P701, y = CLASE.C5,
-           prop.t=FALSE, prop.c=FALSE, prop.chisq = FALSE)
-
-addmargins(table(Real=data.test$P701,Clase_Predicha=CLASE.C5))
-prop.table(table(Real=data.test$P701,Clase_Predicha=CLASE.C5),1)
 
 # Calcular el accuracy
-accuracy_c5 <- mean(data.test$P701==CLASE.C5) ; accuracy_c5
-
-# Calcular el error de mala clasificación
-error <- mean(data.test$P701!=CLASE.C5) ; error
+accuracy_c5 <- mean(data.test$P701==CLASE.C5); 
+accuracy_c5
 
 cm_c5 <- caret::confusionMatrix(CLASE.C5,
                                 data.test$P701,
                                 positive="Si")
 
 cm_c5
-cm_c5$byClass["Sensitivity"] 
-cm_c5$byClass["Specificity"] 
-cm_c5$overall["Accuracy"]
 
 # Curva ROC usando el paquete caTools
 library(caTools)
-colAUC(PROBA.C5,data.test$P701,plotROC = TRUE) -> auc_c5
+colAUC(PROBA.C5, data.test$P701, plotROC = TRUE) -> auc_c5
 abline(0, 1,col="red")
-auc_c5
+
+# log loss
+library(MLmetrics)
+real <- as.numeric(data.test$P701)
+real <- ifelse(real==2,1,0)
+LogLoss(PROBA.C5, real) -> logloss_c5
 ```
 
 ```{r}
@@ -708,14 +758,9 @@ modelo_cart <- train(P701 ~ .,
                      metric="Accuracy")
 
 modelo_cart
-
-#        cp  Accuracy
-#  0.002316    0.7188
-
 modelo_cart$bestTune
+
 plot(modelo_cart)
-
-
 modelo_cart$finalModel
 
 
@@ -723,45 +768,29 @@ PROBA.CART <- predict(modelo_cart,
                       newdata = data.test, 
                       type="prob")
 PROBA.CART <- PROBA.CART[,2]
-head(PROBA.CART)
+CLASE.CART <- predict(modelo_cart, newdata = data.test)
 
-CLASE.CART <- predict(modelo_cart,newdata = data.test )
-head(CLASE.CART)
-
-
-# Evaluando la performance del modelo CART --------------------
-# Matriz de Confusion
-library(gmodels)
-CrossTable(x = data.test$P701, y = CLASE.CART,
-           prop.t=FALSE, prop.c=FALSE, prop.chisq = FALSE)
-
-addmargins(table(Real=data.test$P701,Clase_Predicha=CLASE.CART))
-prop.table(table(Real=data.test$P701,Clase_Predicha=CLASE.CART),1)
 
 # Calcular el accuracy
-accuracy_cart <- mean(data.test$P701==CLASE.CART) ; accuracy_cart
-
-# Calcular el error de mala clasificación
-error <- mean(data.test$P701!=CLASE.CART) ; error
+accuracy_cart <- mean(data.test$P701==CLASE.CART); 
+accuracy_cart
 
 cm_cart <- caret::confusionMatrix(CLASE.CART,
                                   data.test$P701,
                                   positive="Si")
 
 cm_cart
-cm_cart$byClass["Sensitivity"] 
-cm_cart$byClass["Specificity"] 
-cm_cart$overall["Accuracy"]
 
 # Curva ROC usando el paquete caTools
 library(caTools)
-colAUC(PROBA.CART,data.test$P701,plotROC = TRUE) -> auc_cart
+colAUC(PROBA.CART, data.test$P701, plotROC = TRUE) -> auc_cart
 abline(0, 1,col="red")
-auc_cart
-```
 
-```{r}
-
+# log loss
+library(MLmetrics)
+real <- as.numeric(data.test$P701)
+real <- ifelse(real==2,1,0)
+LogLoss(PROBA.CART, real) -> logloss_cart
 ```
 
 
@@ -770,10 +799,47 @@ auc_cart
 
 ```{r}
 
+set.seed(2021)
+modelo_bag <- train(P701 ~ ., 
+                    data = data.train, 
+                    method = "treebag",
+                    trControl = ctrl, 
+                    #tuneLength = 5, 
+                    metric="Accuracy")
+
+modelo_bag
+
 ```
 
+Evaluando la performance del modelo
 ```{r}
 
+set.seed(2021)
+
+PROBA.BAG <- predict(modelo_bag,newdata = data.test, type="prob")
+PROBA.BAG <- PROBA.BAG[,2]
+CLASE.BAG <- predict(modelo_bag,newdata = data.test )
+
+# Calcular el accuracy
+accuracy_bag <- mean(data.test$P701==CLASE.BAG);
+accuracy_bag
+
+cm_bag <- caret::confusionMatrix(CLASE.BAG,
+                                 data.test$P701,
+                                 positive="Si")
+
+cm_bag
+
+# Curva ROC usando el paquete caTools
+library(caTools)
+colAUC(PROBA.BAG,data.test$P701,plotROC = TRUE) -> auc_bag
+abline(0, 1,col="red")
+
+# Log-Loss
+library(MLmetrics)
+real <- as.numeric(data.test$P701)
+real <- ifelse(real==2,1,0)
+LogLoss(PROBA.BAG,real) -> logloss_bag
 ```
 
 
@@ -782,10 +848,44 @@ auc_cart
 
 ```{r}
 
+set.seed(2021)
+modelo_rf <- train(P701 ~ ., 
+                   data = data.train, 
+                   method = "rf", 
+                   trControl = ctrl, 
+                   tuneLength = 5,
+                   metric="Accuracy")
+modelo_rf
 ```
 
+Evaluando la perfomance del modelo
 ```{r}
 
+set.seed(2021)
+PROBA.RF <- predict(modelo_rf,newdata = data.test, type="prob")
+PROBA.RF <- PROBA.RF[,2]
+CLASE.RF <- predict(modelo_rf,newdata = data.test )
+
+# Calcular el accuracy
+accuracy_rf <- mean(data.test$P701==CLASE.RF);
+accuracy_rf
+
+cm_rf <- caret::confusionMatrix(CLASE.RF,
+                                data.test$P701,
+                                positive="Si")
+
+cm_rf
+
+# Area bajo la curva
+library(caTools)
+colAUC(PROBA.RF,data.test$P701, plotROC = TRUE) -> auc_rf
+abline(0, 1,col="red")
+
+# Log-Loss
+library(MLmetrics)
+real <- as.numeric(data.test$P701)
+real <- ifelse(real==2,1,0)
+LogLoss(PROBA.RF,real) -> logloss_rf
 ```
 
 
@@ -793,100 +893,97 @@ auc_cart
 ### Modelo AdaBoosting
 
 ```{r}
+set.seed(2021)
+modelo_ada <- train(factor(P701) ~ ., 
+                    data = data.train, 
+                    method = "adaboost", 
+                    tuneLength=2,
+                    #tuneGrid = expand.grid(nIter=c(50,100),
+                    #method=c("Breiman")),
+                    trControl=ctrl, 
+                    metric="Accuracy")
 
+modelo_ada
+modelo_ada$bestTune
+
+
+PROBA.ADA <- predict(modelo_ada,newdata = data.test,type="prob")
+PROBA.ADA <- PROBA.ADA[,2]
+CLASE.ADA <- predict(modelo_ada,newdata = data.test )
+
+
+# Calcular el accuracy
+accuracy_ada <- mean(data.test$P701==CLASE.ADA);
+accuracy_ada
+
+cm_ada <- caret::confusionMatrix(CLASE.ADA,
+                                 data.test$P701,
+                                 positive="Si")
+
+cm_ada
+
+# Curva ROC usando el paquete caTools
+library(caTools)
+colAUC(PROBA.ADA, data.test$P701,plotROC = TRUE) -> auc_ada
+abline(0, 1,col="red")
+
+# Log-Loss
+library(MLmetrics)
+real <- as.numeric(data.test$P701)
+real <- ifelse(real==2,1,0)
+LogLoss(PROBA.ADA,real) -> logloss_ada
 ```
-
-```{r}
-
-```
-
 
 
 ### Modelo GBM (GRADIENT BOOSTING MACHINE)
-
 ```{r}
 set.seed(2021)
-modelo_gbm <- train(P701 ~ ., data = data.train, 
+modelo_gbm <- train(P701 ~ ., 
+                    data = data.train, 
                     method = "gbm", 
                     tuneLength=2,
                     #tuneGrid = expand.grid(n.trees=c(50,100,150),
                     #                       interaction.depth=c(1,2,3),
                     #                       shrinkage=0.1,
                     #                       n.minobsinnode=10),
-                    trControl=ctrl, metric="Accuracy")
+                    trControl=ctrl, 
+                    metric="Accuracy")
 
 modelo_gbm
 
 modelo_gbm$bestTune
 
-plot(modelo_gbm)
-
-ggplot(modelo_gbm, highlight = T) +
-  labs(title = "Evolución del accuracy con GBM") +
-  guides(color = guide_legend(title = "Max Tree Depth"),
-         shape = guide_legend(title = "Max Tree Depth")) +
-  theme_bw() +
-  theme(legend.position = "bottom")
-
-varImp(modelo_gbm)
-
-plot(varImp(modelo_gbm))
 
 PROBA.GBM <- predict(modelo_gbm,newdata = data.test, type="prob")
 PROBA.GBM <- PROBA.GBM[,2]
-head(PROBA.GBM)
-
 CLASE.GBM <- predict(modelo_gbm,newdata = data.test )
-head(CLASE.GBM)
-
-head(cbind(data.test,PROBA.GBM,CLASE.GBM))
-
-# Evaluando la performance del modelo GBM ---------------------
-# Matriz de Confusión
-library(gmodels)
-CrossTable(x = data.test$P701, y = CLASE.GBM,
-           prop.t=FALSE, prop.c=FALSE, prop.chisq = FALSE)
-
-addmargins(table(Real=data.test$P701,Clase_Predicha=CLASE.GBM))
-prop.table(table(Real=data.test$P701,Clase_Predicha=CLASE.GBM),1)
 
 # Calcular el accuracy
-accuracy_gbm <- mean(data.test$P701==CLASE.GBM) ; accuracy_gbm
-
-# Calcular el error de mala clasificación
-error <- mean(data.test$P701!=CLASE.GBM) ; error
+accuracy_gbm <- mean(data.test$P701==CLASE.GBM);
+accuracy_gbm
 
 cm_gbm <- caret::confusionMatrix(CLASE.GBM,
                                  data.test$P701,
                                  positive="Si")
 
 cm_gbm
-cm_gbm$byClass["Sensitivity"] 
-cm_gbm$byClass["Specificity"] 
-cm_gbm$overall["Accuracy"]
 
 # Curva ROC usando el paquete caTools
 library(caTools)
 colAUC(PROBA.GBM,data.test$P701,plotROC = TRUE) -> auc_gbm
 abline(0, 1,col="red")
-auc_gbm
 
 # Log-Loss
 library(MLmetrics)
 real <- as.numeric(data.test$P701)
 real <- ifelse(real==2,1,0)
 LogLoss(PROBA.GBM,real) -> logloss_gbm
-logloss_gbm
 ```
 
-```{r}
-
-```
 
 
 
 ### Modelo XGBoosting
-
 ```{r}
 set.seed(2021)
 modelo_xg <- train(P701 ~ ., 
@@ -904,9 +1001,6 @@ modelo_xg$resample
 
 plot(modelo_xg)
 
-varImp(modelo_xg)
-
-plot(varImp(modelo_xg))
 
 library(xgboost)
 library(DiagrammeR)
@@ -915,36 +1009,19 @@ xgb.plot.tree(model = modelo_xg$finalModel, trees = 5)
 
 PROBA.XG <- predict(modelo_xg,newdata = data.test, type="prob")
 PROBA.XG <- PROBA.XG[,2]
-head(PROBA.XG)
-
-CLASE.XG <- predict(modelo_xg,newdata = data.test )
-head(CLASE.XG)
-
-head(cbind(data.test,PROBA.XG,CLASE.XG))
-
-# Evaluando la performance del modelo XGBoosting --------------
-# Matriz de Confusión
-library(gmodels)
-CrossTable(x = data.test$P701, y = CLASE.XG,
-           prop.t=FALSE, prop.c=FALSE, prop.chisq = FALSE)
-
-addmargins(table(Real=data.test$P701,Clase_Predicha=CLASE.XG))
-prop.table(table(Real=data.test$P701,Clase_Predicha=CLASE.XG),1)
+CLASE.XG <- predict(modelo_xg,newdata = data.test)
 
 # Calcular el accuracy
-accuracy_xg <- mean(data.test$P701==CLASE.XG) ; accuracy_xg
+accuracy_xg <- mean(data.test$P701==CLASE.XG); 
+accuracy_xg
 
-# Calcular el error de mala clasificación
-error <- mean(data.test$P701!=CLASE.XG) ; error
 
 cm_xg <- caret::confusionMatrix(CLASE.XG,
                                 data.test$P701,
                                 positive="Si")
 
 cm_xg
-cm_xg$byClass["Sensitivity"] 
-cm_xg$byClass["Specificity"] 
-cm_xg$overall["Accuracy"]
+
 
 # Curva ROC usando el paquete caTools
 library(caTools)
@@ -960,6 +1037,128 @@ LogLoss(PROBA.XG,real) -> logloss_xg
 logloss_xg
 ```
 
-```{r}
+Comparando la estabilidad del modelo
 
+```{r}
+modelos  <- list(KNN            = modelo_knn,
+                 RL             = modelo_rl,
+                 NAIVE          = modelo_nb,
+                 SVC            = modelo_svc,
+                 SVM            = modelo_svm,
+                 RNA            = modelo_rna,
+                 C5             = modelo_C5,
+                 CART           = modelo_cart,
+                 BAG            = modelo_bag,
+                 RF             = modelo_rf,
+                 ADA            = modelo_ada,
+                 GBM            = modelo_gbm,
+                 XGBoosting     = modelo_xg)
+
+comparacion_modelos <- resamples(modelos) 
+summary(comparacion_modelos)
+
+
+densityplot(comparacion_modelos,
+            metric = "Accuracy",
+            auto.key=TRUE)
 ```
+
+Comparacion de modelos
+
+```{r}
+algoritmos       <- c("KNN",
+                      "Regresion Logistica",
+                      "Naive Bayes",
+                      "SVM Lineal",
+                      "SVM",
+                      "Red neuronal",
+                      "Arbol C5",
+                      "CART",
+                      "Bagging",
+                      "Random Forest",
+                      "AdaBoosting",
+                      "GBM",
+                      "XGBoosting")
+
+sensibilidad  <- c(cm_knn$byClass["Sensitivity"],
+                    cm_rl$byClass["Sensitivity"],
+                    cm_nb$byClass["Sensitivity"],
+                    cm_svc$byClass["Sensitivity"],
+                    cm_svm$byClass["Sensitivity"],
+                    cm_rna$byClass["Sensitivity"],
+                    cm_c5$byClass["Sensitivity"],
+                    cm_cart$byClass["Sensitivity"],
+                    cm_bag$byClass["Sensitivity"],
+                    cm_rf$byClass["Sensitivity"],
+                    cm_ada$byClass["Sensitivity"],
+                    cm_gbm$byClass["Sensitivity"],
+                    cm_xg$byClass["Sensitivity"])
+
+
+especificidad <- c(cm_knn$byClass["Specificity"],
+                    cm_rl$byClass["Specificity"],
+                    cm_nb$byClass["Specificity"],
+                    cm_svc$byClass["Specificity"],
+                    cm_svm$byClass["Specificity"],
+                    cm_rna$byClass["Specificity"],
+                    cm_c5$byClass["Specificity"],
+                    cm_cart$byClass["Specificity"],
+                    cm_bag$byClass["Specificity"],
+                    cm_rf$byClass["Specificity"],
+                    cm_ada$byClass["Specificity"],
+                    cm_gbm$byClass["Specificity"],
+                    cm_xg$byClass["Specificity"])
+
+accuracy      <- c(accuracy_knn,
+                    accuracy_rl,
+                    accuracy_nb,
+                    accuracy_svc,
+                    accuracy_svm,
+                    accuracy_rna,
+                    accuracy_c5,
+                    accuracy_car,
+                    accuracy_bag,
+                    accuracy_rf,
+                    accuracy_ada,
+                    accuracy_gbm,
+                    accuracy_xg)
+
+area_roc      <- c(auc_knn,
+                    auc_rl,
+                    auc_nb,
+                    auc_svc,
+                    auc_svm,
+                    auc_rna,
+                    auc_c5,
+                    auc_car,
+                    auc_bag,
+                    auc_rf,
+                    auc_ada,
+                    auc_gbm,
+                    auc_xg)
+
+
+logloss        < c(logloss_knn,
+                    logloss_rl,
+                    logloss_nb,
+                    logloss_svc,
+                    logloss_svm,
+                    logloss_rna,
+                    logloss_c5,
+                    logloss_car,
+                    logloss_bag,
+                    logloss_rf,
+                    logloss_ada,
+                    logloss_gbm,
+                    logloss_xg)
+
+comparacion <- data.frame(algoritmos,
+                          sensibilidad, 
+                          especificidad,
+                          accuracy,
+                          area_roc,
+                          logloss)
+
+comparacion
+```
+
