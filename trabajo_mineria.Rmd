@@ -346,10 +346,9 @@ data.test$P501_Maestria..Doctorado <- NULL
 data.test$P501_Tecnico.Superior.Completa <- NULL
 data.test$P501_Educacion.Basica.Completa <- NULL
 
+str(data.train)
+str(data.test)
 ```
-
-
-
 
 
 Verificacion del conjunto de datos
