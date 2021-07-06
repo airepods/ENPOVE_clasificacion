@@ -20,11 +20,7 @@ Se cargan los paquetes
 ```{r}
 library(pacman)
 p_load(foreign, DataExplorer, recipes, MLmetrics, caret, 
-<<<<<<< Updated upstream
        caTools, yardstick, funModeling, DataExplorer, VIM)
-=======
-       caTools, yardstick, funModeling, DataExplorer, VIM,BiocManager, boruta)
->>>>>>> Stashed changes
 
 ```
 
@@ -485,6 +481,7 @@ modelo_nb <- train(data.train[,predictores],
 
 modelo_nb 
 ```
+
 Evaluando la performance del modelo
 ```{r}
 set.seed(2021)
@@ -565,7 +562,7 @@ logloss_svc
 ```{r}
 # Modelo SVM
 set.seed(2021)
-modelo2 <- train(P701 ~ ., 
+modelo_svm <- train(P701 ~ ., 
                  data = data.train, 
                  method = "svmRadial", 
                  trControl = ctrl, 
@@ -575,31 +572,27 @@ modelo2 <- train(P701 ~ .,
                  metric="Accuracy")
 
 
-modelo2
+modelo_svm
 
-modelo2$bestTune
+modelo_svm$bestTune
 # Los mejor hiper parametros encontrados durante el entrenamiento son
 # sigma = 0.05317 y C = 1.333
 # Estos se obtuvieron durante una segunda pasada de entrenamiento usando tuneGrid
 # y considerando como sigma al mejor sigma obtenido de la primera pasada
 
-plot(modelo2)
+plot(modelo_svm)
 
 
-PROBA.SVM <- predict(modelo2, newdata= data.test, type="prob")
-head(PROBA.SVM)
+PROBA.SVM <- predict(modelo_svm, newdata= data.test, type="prob")
 PROBA.SVM <- PROBA.SVM[,2]
 
-CLASE.SVM <- predict(modelo2,newdata = data.test) # 0.5
+CLASE.SVM <- predict(modelo_svm,newdata = data.test) # 0.5
 head(CLASE.SVM)
 
 # Evaluando la performance del modelo SVM ---------------------
 
 # Calcular el accuracy
 accuracy_svm <- mean(data.test$P701==CLASE.SVM);accuracy_svm
-
-# Calcular el error de mala clasificación
-error <- mean(data.test$P701!=CLASE.SVM) ; error
 
 # Matriz de Confusion usando el paquete caret
 library(caret)
@@ -610,13 +603,9 @@ cm_svm
 
 cm_svm$table
 
-cm_svm$byClass["Sensitivity"] 
-cm_svm$byClass["Specificity"] 
-cm_svm$overall["Accuracy"]
-
 # Curva ROC usando el paquete caTools
 library(caTools)
-colAUC(PROBA.SVM,data.test$MORA60,plotROC = TRUE) -> auc_svm
+colAUC(PROBA.SVM,data.test$P701,plotROC = TRUE) -> auc_svm
 abline(0, 1,col="red")
 auc_svm
 
