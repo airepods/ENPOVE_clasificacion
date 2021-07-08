@@ -20,7 +20,8 @@ Se cargan los paquetes
 ```{r}
 library(pacman)
 p_load(foreign, DataExplorer, recipes, MLmetrics, caret, 
-       caTools, yardstick, funModeling, DataExplorer, VIM)
+       caTools, yardstick, funModeling, DataExplorer, VIM, NeuralNetTools, fastAdaboost,
+       ggplot2, randomForest, adabag, caretEnsemble, pROC)
 
 ```
 
@@ -634,10 +635,6 @@ LogLoss(PROBA.SVM,real) -> logloss_svm
 
 ```
 
-```{r}
-
-```
-
 
 
 ### Red neuronal 
@@ -736,10 +733,6 @@ library(MLmetrics)
 real <- as.numeric(data.test$P701)
 real <- ifelse(real==2,1,0)
 LogLoss(PROBA.C5, real) -> logloss_c5
-```
-
-```{r}
-
 ```
 
 
@@ -1037,7 +1030,7 @@ LogLoss(PROBA.XG,real) -> logloss_xg
 logloss_xg
 ```
 
-Comparando la estabilidad del modelo
+### Comparando la estabilidad del modelo
 
 ```{r}
 modelos  <- list(KNN            = modelo_knn,
@@ -1057,13 +1050,14 @@ modelos  <- list(KNN            = modelo_knn,
 comparacion_modelos <- resamples(modelos) 
 summary(comparacion_modelos)
 
+modelCor(comparacion_modelos)
 
 densityplot(comparacion_modelos,
             metric = "Accuracy",
             auto.key=TRUE)
 ```
 
-Comparacion de modelos
+### Comparacion de modelos
 
 ```{r}
 algoritmos       <- c("KNN",
@@ -1116,7 +1110,7 @@ accuracy      <- c(accuracy_knn,
                     accuracy_svm,
                     accuracy_rna,
                     accuracy_c5,
-                    accuracy_car,
+                    accuracy_cart,
                     accuracy_bag,
                     accuracy_rf,
                     accuracy_ada,
@@ -1130,7 +1124,7 @@ area_roc      <- c(auc_knn,
                     auc_svm,
                     auc_rna,
                     auc_c5,
-                    auc_car,
+                    auc_cart,
                     auc_bag,
                     auc_rf,
                     auc_ada,
@@ -1138,14 +1132,14 @@ area_roc      <- c(auc_knn,
                     auc_xg)
 
 
-logloss        < c(logloss_knn,
+logloss        <- c(logloss_knn,
                     logloss_rl,
                     logloss_nb,
                     logloss_svc,
                     logloss_svm,
                     logloss_rna,
                     logloss_c5,
-                    logloss_car,
+                    logloss_cart,
                     logloss_bag,
                     logloss_rf,
                     logloss_ada,
@@ -1162,3 +1156,98 @@ comparacion <- data.frame(algoritmos,
 comparacion
 ```
 
+Se han elegido 4 modelos que estan menos correlacionados -> knn, naive, bag, ada
+
+
+### Ensamble de modelos
+```{r}
+set.seed(2021)
+modelos <- as.caretList(modelos)
+
+ensamble <- caretEnsemble(modelos)
+summary(ensamble)
+
+proba_ensam  <- predict(object = ensamble,
+                        data.test[,predictores],
+                        type='prob')
+head(proba_ensam)
+
+clase_ensam <- predict(object = ensamble,
+                       data.test[,predictores])
+
+cm_ensamble <- caret::confusionMatrix(clase_ensam,
+                                      data.test[,target],
+                                      positive="Si")
+
+cm_ensamble$byClass["Sensitivity"] 
+cm_ensamble$byClass["Specificity"] 
+cm_ensamble$overall["Accuracy"]
+```
+
+### Stacking de modelos
+```{r}
+stackControl <- trainControl(method = "cv",
+                             number = 10,
+                             savePredictions = 'final', # To save out of fold predictions for best parameter combinantions
+                             classProbs = T             # To save the class probabilities of the out of fold predictions
+                             )
+
+set.seed(2021)
+stack.svm <-  caretStack(modelos,
+                         method="svmLinear",      
+                         tuneLength=5,
+                         metric="Accuracy",  
+                         trControl=stackControl)
+ 
+#plot(stack.svm)
+
+summary(stack.svm)
+
+proba_stack  <- predict(object = stack.svm,
+                        data.test[,predictores],
+                        type='prob')
+
+clase_stack  <- predict(object = stack.svm,
+                        data.test[,predictores])
+
+cm_stacking       <- caret::confusionMatrix(clase_stack,
+                                            data.test[,target],
+                                            positive="Si")
+
+
+cm_stacking$byClass["Sensitivity"] 
+cm_stacking$byClass["Specificity"] 
+cm_stacking$overall["Accuracy"]
+```
+
+Umbral optimo con lo obtenido en el stacking
+
+```{r}
+library(pROC)
+roc <- roc(data.test[,target],proba_stack)
+plot.roc(roc, 
+         legacy.axes=TRUE,
+         print.thres=TRUE,
+         auc.polygon=TRUE,
+         col="blue",
+         print.auc=TRUE,
+         auc.polygon.col="lightblue",
+         xlab="1-Especificidad", 
+         ylab="Sensibilidad")
+
+umbral <- pROC::coords(roc, "best")$threshold
+umbral
+
+clase_stack2 <- as.factor(ifelse(proba_stack>umbral,
+                                    "Si", "No"))
+
+cm_stack2 <- caret::confusionMatrix(clase_stack2, 
+                                    data.test[,target],
+                                    positive="Si")
+
+cm_stack2$byClass["Sensitivity"] 
+cm_stack2$byClass["Specificity"] 
+cm_stack2$overall["Accuracy"]
+```
+Se concluye que con el modelo obtenido luego del stacking se tiene un accuracy de 0.6994907 superando a los accuracy de los modelos
+por usados por separado y tambien superando a lo obtenido con el umbral optimo.
